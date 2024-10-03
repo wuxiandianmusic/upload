@@ -23,9 +23,10 @@ export default {
     if (contentType.includes('text/html')) {
       let text = await response.text();
 
-      // 将 pomf2.lain.la 替换为当前访问的域名
+      // 将 pomf2.lain.la 替换为当前访问的域名，确保所有链接和文本都被替换
       let updatedText = text.replace(/pomf2\.lain\.la/g, url.hostname);
 
+      // 返回替换后的 HTML
       return new Response(updatedText, {
         headers: {
           'Content-Type': 'text/html',
