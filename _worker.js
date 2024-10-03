@@ -19,9 +19,27 @@ export default {
     // 获取响应类型
     let contentType = response.headers.get('Content-Type') || '';
 
-    // 如果是流媒体文件，直接返回流式传输的 body
+    // 如果是 HTML 文件，进行内容替换
+    if (contentType.includes('text/html')) {
+      let text = await response.text();
+      
+      // 将 pomf2.lain.la 替换为当前访问的域名
+      let updatedText = text.replace(/pomf2\.lain\.la/g, url.hostname);
+
+      return new Response(updatedText, {
+        headers: {
+          'Content-Type': 'text/html',
+          'Access-Control-Allow-Origin': '*',  // 允许跨域
+          'Access-Control-Allow-Methods': 'GET, HEAD, OPTIONS',
+          'Access-Control-Allow-Headers': '*',
+        },
+        status: response.status,
+        statusText: response.statusText
+      });
+    }
+
+    // 如果是视频或音频文件，直接返回流式数据
     if (contentType.includes('video') || contentType.includes('audio')) {
-      // 确保 Range 请求和响应能够正常处理
       return new Response(response.body, {
         headers: {
           ...response.headers,
@@ -34,31 +52,24 @@ export default {
         statusText: response.statusText
       });
     }
-    
-    // 如果是文本或 HTML 文件，处理替换 pomf2.lain.la 为当前域名
-    if (contentType.includes('text/html') || contentType.includes('application/json') || contentType.includes('text')) {
-      let text = await response.text();
-      let updatedText = text.replace(/pomf2\.lain\.la/g, url.hostname);
 
-      return new Response(updatedText, {
+    // 对于 CSS、JS 等静态资源，直接传递
+    if (contentType.includes('text/css') || contentType.includes('application/javascript') || contentType.includes('image')) {
+      return new Response(response.body, {
         headers: {
           ...response.headers,
           'Access-Control-Allow-Origin': '*',  // 允许跨域
-          'Access-Control-Allow-Methods': 'GET, HEAD, OPTIONS',
-          'Access-Control-Allow-Headers': '*',
         },
         status: response.status,
         statusText: response.statusText
       });
     }
 
-    // 对于其他类型的响应，直接传递
+    // 对于其他类型的响应，直接返回
     return new Response(response.body, {
       headers: {
         ...response.headers,
         'Access-Control-Allow-Origin': '*',  // 允许跨域
-        'Access-Control-Allow-Methods': 'GET, HEAD, OPTIONS',
-        'Access-Control-Allow-Headers': '*',
       },
       status: response.status,
       statusText: response.statusText
