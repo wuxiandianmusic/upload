@@ -4,7 +4,7 @@ export default {
     
     // 替换当前域名为目标域名 pomf2.lain.la
     let targetUrl = new URL(request.url.replace(url.hostname, 'pomf2.lain.la'));
-    
+
     // 构建代理请求，保留原始请求的所有方法、头部等信息
     let modifiedRequest = new Request(targetUrl, {
       method: request.method,
@@ -12,15 +12,16 @@ export default {
       body: request.body,
       redirect: 'follow'
     });
-    
+
     // 获取目标服务器的响应
     let response = await fetch(modifiedRequest);
 
-    // 检查是否为流媒体响应（根据 MIME 类型判断），如果是则直接返回流式传输的 body
-    if (response.headers.get('Content-Type').includes('video') || 
-        response.headers.get('Content-Type').includes('audio')) {
-      
-      // 确保 Range 请求能够正常处理，并传递所有相关头部信息
+    // 获取响应类型
+    let contentType = response.headers.get('Content-Type') || '';
+
+    // 如果是流媒体文件，直接返回流式传输的 body
+    if (contentType.includes('video') || contentType.includes('audio')) {
+      // 确保 Range 请求和响应能够正常处理
       return new Response(response.body, {
         headers: {
           ...response.headers,
@@ -28,18 +29,31 @@ export default {
           'Accept-Ranges': 'bytes',            // 支持 Range 请求
           'Access-Control-Allow-Methods': 'GET, HEAD, OPTIONS',
           'Access-Control-Allow-Headers': '*',
-          'Content-Type': response.headers.get('Content-Type') // 保留正确的 Content-Type
+        },
+        status: response.status,
+        statusText: response.statusText
+      });
+    }
+    
+    // 如果是文本或 HTML 文件，处理替换 pomf2.lain.la 为当前域名
+    if (contentType.includes('text/html') || contentType.includes('application/json') || contentType.includes('text')) {
+      let text = await response.text();
+      let updatedText = text.replace(/pomf2\.lain\.la/g, url.hostname);
+
+      return new Response(updatedText, {
+        headers: {
+          ...response.headers,
+          'Access-Control-Allow-Origin': '*',  // 允许跨域
+          'Access-Control-Allow-Methods': 'GET, HEAD, OPTIONS',
+          'Access-Control-Allow-Headers': '*',
         },
         status: response.status,
         statusText: response.statusText
       });
     }
 
-    // 非流媒体的情况，处理 HTML/文本内容替换
-    let text = await response.text();
-    let updatedText = text.replace(/pomf2\.lain\.la/g, url.hostname);
-
-    return new Response(updatedText, {
+    // 对于其他类型的响应，直接传递
+    return new Response(response.body, {
       headers: {
         ...response.headers,
         'Access-Control-Allow-Origin': '*',  // 允许跨域
